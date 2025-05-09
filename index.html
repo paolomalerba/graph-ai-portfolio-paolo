@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Portfolio | Paolo Malerba</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Clear & distinguished fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #B7D0B0;      /* lighter sage */
+      --primary-light: #E4F0E0; /* very light sage */
+      --primary-dark: #97B297;  /* medium sage */
+      --dark: #000000;          /* black */
+      --light: #ffffff;         /* white */
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Open Sans', Arial, sans-serif;
+      color: var(--dark);
+      background: var(--light);
+      line-height: 1.6;
+    }
+    h1, h2, h3 {
+      font-family: 'Montserrat', 'Open Sans', Arial, sans-serif;
+      font-weight: 600;
+    }
+    a { color: var(--primary-dark); text-decoration: none; }
+    /* Top navigation */
+    .top-nav {
+      background: var(--light);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    }
+    .top-nav .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      font-size: 1.4rem;
+      color: var(--dark);
+    }
+    .logo span {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: #666;
+    }
+    nav ul { list-style: none; display: flex; gap: 1.5rem; }
+    nav a {
+      font-weight: 600;
+      position: relative;
+      padding-bottom: 4px;
+    }
+    nav a:hover::after, nav a.active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--primary-dark);
+    }
+    /* Hero section */
+    .hero {
+      background: #FAFDF9; /* extra‑light backdrop */
+      padding: 4rem 1.5rem 3rem;
+    }
+    .hero .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 2.5rem;
+    }
+    .photo {
+      flex: 0 0 260px;
+      height: 260px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 6px solid var(--primary-dark);
+    }
+    .photo img { width: 100%; height: 100%; object-fit: cover; }
+    .intro { flex: 1 1 320px; }
+    .intro h2 {
+      font-size: 2.8rem;
+      line-height: 1.2;
+      color: var(--dark);
+      margin-bottom: 0.5rem;
+    }
+    .intro h2 span {
+      font-size: 1.4rem;
+      font-weight: 400;
+      color: #555;
+    }
+    .circle-links {
+      margin: 2rem 0 1.5rem;
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .circle {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-weight: 600;
+      color: var(--dark);
+      transition: transform 0.2s ease;
+    }
+    .circle:nth-child(1) { background: var(--primary); }
+    .circle:nth-child(2) { background: var(--primary-light); }
+    .circle:nth-child(3) { background: var(--primary-dark); color: var(--light); }
+    .circle:hover { transform: translateY(-4px); }
+
+    /* Sections */
+    section.content {
+      max-width: 900px;
+      margin: 3rem auto;
+      padding: 2rem 1.5rem;
+    }
+    section.content h3 {
+      color: var(--primary-dark);
+      margin-bottom: 1rem;
+    }
+    section.content ul, ol { padding-left: 1.2rem; }
+
+    /* Footer bar */
+    .bottom-bar {
+      background: var(--primary);
+      color: var(--dark);
+      margin-top: 4rem;
+    }
+    .bottom-bar .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.2rem 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.9rem;
+    }
+    .social {
+      display: flex;
+      gap: 0.8rem;
+    }
+    .social a {
+      color: var(--dark);
+      font-size: 1.2rem;
+    }
+
+    @media (max-width: 700px) {
+      .hero .container { flex-direction: column; text-align: center; }
+      .intro h2 { font-size: 2.4rem; }
+      .circle-links { justify-content: center; }
+      nav ul { gap: 1rem; }
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #111; color: #e0e0e0; }
+      .top-nav { background: #1b1b1b; }
+      .hero { background: #1a1a1a; }
+      .circle { color: #000; }
+      .circle:nth-child(3) { color: #fff; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  <header class="top-nav">
+    <div class="container">
+      <div class="logo">Paolo Malerba <span>Emergency Medicine Physician / PhD Candidate</span></div>
+      <nav>
+        <ul>
+          <li><a href="#home" class="active">Home</a></li>
+          <li><a href="#about-me">About</a></li>
+          <li><a href="#about-course">Course</a></li>
+          <li><a href="#weekly-submissions">Submissions</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section id="home" class="hero">
+    <div class="container">
+      <div class="photo">
+        <!-- User portrait -->
+        <img src="118621056_10222762316063008_9187362708017408520_n.jpg" alt="Paolo Malerba portrait">
+      </div>
+      <div class="intro">
+        <h2>Hello,<br><span>a bit about me:</span></h2>
+        <p>I am an Italian Emergency Medicine physician and PhD candidate passionate about leveraging technology and AI to enhance healthcare delivery and make data‑driven decisions.</p>
+        <div class="circle-links">
+          <a href="#about-me" class="circle">About Me</a>
+          <a href="#about-course" class="circle">Course</a>
+          <a href="#weekly-submissions" class="circle">Submissions</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Sections -->
+  <section id="about-me" class="content">
+    <h3>About Me</h3>
+    <p>I currently work at Vizzolo Predabissi Hospital while pursuing a PhD at CRIMEDIM. My experience includes internal medicine, humanitarian aid with Emergency&nbsp;NGO, and global health research.</p>
+    <ul>
+      <li><strong>Specialization:</strong> Internal Medicine (cum laude, 2023)</li>
+      <li><strong>MD:</strong> University
