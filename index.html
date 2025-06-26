@@ -1,107 +1,170 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8" />
 <title>EMERGENCY PHC Project – Ukraine – Monthly Report</title>
 
-<!-- Plotly (interactive charts) -->
+<!--  ▸  FONTS  &  LIBS  -->
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
+<!--  ▸  THEME  -->
 <style>
-  body {font-family: Arial, sans-serif; margin: 20px; max-width: 1200px;}
-  h1   {text-align: center;}
-  .chart {margin-bottom: 60px;}
-  .error {color: red;}
+  :root{
+    --teal:   #00838a;  /* main brand colour   */
+    --grey:   #b7b7b7;  /* neutral / “same”   */
+    --red:    #d7263d;  /* alert / decrease   */
+    --bg:     #ffffff;
+    --text:   #212121;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Quicksand",sans-serif;background:var(--bg);color:var(--text)}
+  /* ---------- header ---------- */
+  header{
+    position:sticky;top:0;z-index:999;
+    background:var(--bg);padding:12px 20px 6px;border-bottom:2px solid var(--teal);
+  }
+  header h1{margin:0;font-size:24px;text-align:center;font-weight:700;}
+  /* ---------- grid ---------- */
+  .container{max-width:1200px;margin:0 auto;padding:20px}
+  .row{display:grid;gap:28px;margin-bottom:42px}
+  .row.cols-2{grid-template-columns:1fr 1fr}
+  .row.cols-4{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .card{padding:16px;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.08);background:#fff}
+  .stat{font-size:42px;font-weight:700;color:var(--teal);text-align:center;margin:0}
+  .stat-label{text-align:center;margin-top:-8px;color:var(--grey);letter-spacing:.5px}
+  /* ---------- footer ---------- */
+  footer{padding:20px;text-align:center;font-size:12px;color:var(--grey)}
+  /* ---------- responsive tweaks ---------- */
+  @media(max-width:700px){
+    header h1{font-size:20px}
+    .row{gap:20px}
+  }
 </style>
 </head>
 <body>
-<h1>EMERGENCY PHC Project – Ukraine – Monthly Report</h1>
 
-<div id="chart-month"  class="chart"></div>
-<div id="chart-gender" class="chart"></div>
-<div id="chart-age"    class="chart"></div>
-<div id="chart-cond"   class="chart"></div>
+<header><h1>EMERGENCY PHC Project – Ukraine – Monthly Report</h1></header>
+
+<div class="container">
+  <!-- Row 1 -->
+  <div class="row cols-2">
+    <div class="card">
+      <p id="cumulative" class="stat">–</p>
+      <p class="stat-label">Total First Visits</p>
+    </div>
+    <div id="chart-first-month" class="card" style="height:320px"></div>
+  </div>
+
+  <!-- Row 2 – 4 pies -->
+  <div class="row cols-4">
+    <div id="pie-gender"       class="card" style="height:260px"></div>
+    <div id="pie-age"          class="card" style="height:260px"></div>
+    <div id="pie-employment"   class="card" style="height:260px"></div>
+    <div id="pie-lastseen"     class="card" style="height:260px"></div>
+  </div>
+
+  <!-- Row 3 -->
+  <div class="row cols-2">
+    <div id="bar-symptoms" class="card" style="height:380px"></div>
+    <div id="bar-chronic"  class="card" style="height:380px"></div>
+  </div>
+
+  <!-- Row 4 -->
+  <div class="row cols-2">
+    <div id="bar-needs"    class="card" style="height:380px"></div>
+    <div id="bar-activities" class="card" style="height:380px"></div>
+  </div>
+</div>
+
+<footer id="updated">Data last updated: –</footer>
 
 <script>
-/* -----------------------------------------------------------
-   If you ever rename the tab, change “Data” below to match.
-   Sheet must be shared as:  Anyone with the link ▸ Viewer
------------------------------------------------------------ */
-const API_URL = "https://opensheet.elk.sh/1tIr5xZK1VQwLz_m5ooNx261rjdZcJD-8MeENZ1IYxvU/Data";
+/* ========== CONFIG ========== */
+const API_URL  = "https://opensheet.elk.sh/1tIr5xZK1VQwLz_m5ooNx261rjdZcJD-8MeENZ1IYxvU/Data";
+const TEAL     = "#00838a", GREY= "#b7b7b7", RED = "#d7263d";
 
-const CONDITION_COLS = ["Headache","High Blood Pressure","High blood sugare",
-                        "Gastrointestinal symptoms","Respiratory symptoms",
-                        "Depressed mood","Insomnia"];
+/* Column blocks in the sheet --------------- */
+const SYMPTOM_COLS = ["Headache","High Blood Pressure","High blood sugare","Gastrointestinal symptoms","Respiratory symptoms","Depressed mood","Insomnia"];
+const CHRONIC_COLS = ["Cardio vascular diseases","Diabetes","Respiratory diseases","Neurological diseases","Other chronic diseases"];   // Q–U
+const NEED_COLS    = ["Medication","Equipment","Transportation to facility","Financial support"];                                       // AA–AD
+const ACT_COLS     = ["Health education","Medication delivery","Monitoring","Referral","Other","Advocacy","Follow-up","Home visit"];   // AE–AN
 
-// ---------- helpers ----------
-const titleCase = s => s.replace(/\w\S*/g,
-      t => t.charAt(0).toUpperCase() + t.substr(1).toLowerCase());
-const error = msg => document.body.insertAdjacentHTML(
-      "afterbegin", `<p class="error">${msg}</p>`);
+/* ========== HELPERS ========== */
+const tc = s => s.replace(/\w\S*/g,t=>t.charAt(0).toUpperCase()+t.substr(1).toLowerCase());
+const sumDict = (dict,key)=>{dict[key]=(dict[key]||0)+1};
 
-// ---------- main ----------
+/* ========== FETCH & BUILD ========== */
 fetch(API_URL)
-  .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-  .then(rows => {
-      if (!rows.length) { error("Sheet returned no rows."); return; }
+  .then(r=>{if(!r.ok)throw Error(r.status);return r.json()})
+  .then(rows=>{
+      if(!rows.length){alert("No rows");return;}
+      /* ---------- accumulators ---------- */
+      const monthTotals={}, genderCnt={}, ageCnt={}, empCnt={}, seenCnt={};
+      const symptomCnt={}, chronicCnt={}, needCnt={}, actCnt={};
+      rows.forEach(r=>{
+          /* cumulative & per-month */
+          const m = tc(r.Month||"").trim();
+          if(m)   sumDict(monthTotals,m);
 
-      const monthTotals = {}, genderMonth = {}, ageDist = {},
-            condCnt = Object.fromEntries(CONDITION_COLS.map(c => [c, 0]));
+          /* pies */
+          sumDict(genderCnt, tc(r.Gender||"Unknown"));
+          sumDict(ageCnt,    tc(r.Age||"Unknown"));
+          sumDict(empCnt,    tc(r.Employment||"Unknown"));
+          sumDict(seenCnt,   tc(r["Last time seen by a health professional"]||"Unknown"));
 
-      rows.forEach(r => {
-          const month  = titleCase((r.Month  || "").trim());   if (!month) return;
-          const gender = titleCase((r.Gender || "Unknown").trim()) || "Unknown";
-          const ageGrp =           (r.Age    || "Unknown").trim()  || "Unknown";
-
-          monthTotals[month] = (monthTotals[month] || 0) + 1;
-
-          genderMonth[month] = genderMonth[month] || {};
-          genderMonth[month][gender] = (genderMonth[month][gender] || 0) + 1;
-
-          ageDist[ageGrp] = (ageDist[ageGrp] || 0) + 1;
-
-          CONDITION_COLS.forEach(c => {
-              if ((r[c] || "").toLowerCase() === "yes") condCnt[c]++;
-          });
+          /* symptoms yes/no columns */
+          SYMPTOM_COLS.forEach(c=>{ if((r[c]||"").toLowerCase()==="yes") sumDict(symptomCnt,c); });
+          CHRONIC_COLS.forEach(c=>{ if((r[c]||"").toLowerCase()==="yes") sumDict(chronicCnt,c); });
+          NEED_COLS.forEach(c   =>{ if((r[c]||"").toLowerCase()==="yes") sumDict(needCnt,c);    });
+          ACT_COLS.forEach(c    =>{ if((r[c]||"").toLowerCase()==="yes") sumDict(actCnt,c);     });
       });
 
-      // 1 – total per month
-      const months = Object.keys(monthTotals).sort();
-      Plotly.newPlot("chart-month", [{
-          type: "bar",
-          x: months,
-          y: months.map(m => monthTotals[m])
-      }], {title: "Total Consultations per Month"});
+      /* ---------- Row 1 ---------- */
+      const totalFirst = rows.length;
+      document.getElementById("cumulative").textContent = totalFirst.toLocaleString();
 
-      // 2 – gender stacked
-      const genders = [...new Set(Object.values(genderMonth).flatMap(o => Object.keys(o)))];
-      Plotly.newPlot("chart-gender",
-          genders.map(g => ({
-              name: g,
-              type: "bar",
-              x: months,
-              y: months.map(m => (genderMonth[m] && genderMonth[m][g]) || 0)
-          })),
-          {title: "Consultations by Gender per Month", barmode: "stack"});
+      const months = Object.keys(monthTotals).sort();                        // June, July …
+      Plotly.newPlot("chart-first-month",[{
+          type:"bar", marker:{color:TEAL},
+          x: months, y: months.map(m=>monthTotals[m])
+      }],{title:"First Visits per Month",margin:{t:40}});
 
-      // 3 – age distribution
-      const ages = Object.keys(ageDist).sort();
-      Plotly.newPlot("chart-age", [{
-          type: "bar",
-          x: ages,
-          y: ages.map(a => ageDist[a])
-      }], {title: "Age Group Distribution (All Months)"});
+      /* ---------- helper to build pies ---------- */
+      const makePie = (el,title,data) => {
+          Plotly.newPlot(el,[{
+              type:"pie",
+              labels:Object.keys(data),
+              values:Object.values(data),
+              marker:{colors:[TEAL,GREY,RED,"#6aa6a7","#e0e0e0"]},
+              textinfo:"percent",
+              hole:.4
+          }],{title,margin:{t:50,b:20,l:20,r:20},showlegend:false});
+      };
+      makePie("pie-gender","Gender",genderCnt);
+      makePie("pie-age","Age Group",ageCnt);
+      makePie("pie-employment","Employment",empCnt);
+      makePie("pie-lastseen","Last Seen by Health Pro",seenCnt);
 
-      // 4 – top 5 conditions
-      const top5 = Object.entries(condCnt).sort((a,b)=>b[1]-a[1]).slice(0,5);
-      Plotly.newPlot("chart-cond", [{
-          type: "bar",
-          x: top5.map(t => t[0]),
-          y: top5.map(t => t[1])
-      }], {title: "Top 5 Reported Conditions"});
+      /* ---------- bar helper ---------- */
+      const makeBar = (el,title,data,color=TEAL) => {
+          const labels = Object.keys(data);
+          Plotly.newPlot(el,[{
+              type:"bar",orientation:"v",
+              x:labels, y:labels.map(l=>data[l]),
+              marker:{color:color},
+          }],{title,margin:{t:50,b:120},xaxis:{tickangle:-45}});
+      };
+      makeBar("bar-symptoms","Symptoms Reported",symptomCnt);
+      makeBar("bar-chronic","Chronic Drug Prescription",chronicCnt,GREY);
+      makeBar("bar-needs","Health Needs Reported",needCnt,GREY);
+      makeBar("bar-activities","CHW Activities Performed",actCnt,TEAL);
+
+      /* ---------- footer timestamp ---------- */
+      const now = new Date().toISOString().slice(0,16).replace("T"," ");
+      document.getElementById("updated").textContent = "Data last updated: " + now;
   })
-  .catch(e => { error("Data load failed: " + e.message); console.error(e); });
+  .catch(e=>{console.error(e);alert("Load error: "+e.message)});
 </script>
 </body>
 </html>
-
