@@ -1,10 +1,15 @@
-html_template = r"""<!DOCTYPE html>
+from pathlib import Path
+
+spreadsheet_id = "1tIr5xZK1VQwLz_m5ooNx261rjdZcJD-8MeENZ1IYxvU"
+tab_name = "Data"
+api_url = f"https://opensheet.elk.sh/{spreadsheet_id}/{tab_name}"
+
+html_json = f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <title>EMERGENCY PHC Project - Ukraine - Monthly Report</title>
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
  body{{font-family:Arial, sans-serif;margin:20px;max-width:1200px}}
  h1{{text-align:center}}
@@ -14,62 +19,64 @@ html_template = r"""<!DOCTYPE html>
 </head>
 <body>
 <h1>EMERGENCY PHC Project - Ukraine - Monthly Report</h1>
-<div id="chart-month" class="chart"></div>
+<div id="chart-month"  class="chart"></div>
 <div id="chart-gender" class="chart"></div>
-<div id="chart-age" class="chart"></div>
-<div id="chart-cond" class="chart"></div>
+<div id="chart-age"    class="chart"></div>
+<div id="chart-cond"   class="chart"></div>
 
 <script>
-const CSV_URL = "CSV_LINK_PLACEHOLDER";
-const CONDITION_COLS = [
-  "Headache","High Blood Pressure","High blood sugare",
-  "Gastrointestinal symptoms","Respiratory symptoms",
-  "Depressed mood","Insomnia"
-];
+const API_URL = "{api_url}";
+const CONDITION_COLS = ["Headache","High Blood Pressure","High blood sugare",
+                        "Gastrointestinal symptoms","Respiratory symptoms",
+                        "Depressed mood","Insomnia"];
 
-function titleCase(s){{return s.replace(/\\w\\S*/g,t=>t.charAt(0).toUpperCase()+t.substr(1).toLowerCase());}}
-function showError(m){{document.body.insertAdjacentHTML('afterbegin', `<p class="error">${{m}}</p>`);}}
+const titleCase = s => s.replace(/\\w\\S*/g, t => t.charAt(0).toUpperCase() + t.substr(1).toLowerCase());
+const error = m => document.body.insertAdjacentHTML("afterbegin", `<p class="error">${{m}}</p>`);
 
-fetch(CSV_URL,{{mode:"cors"}}).then(r=>{{if(!r.ok)throw new Error(r.status);return r.text();}})
-.then(txt=>{{
-  const rows=Papa.parse(txt,{{header:true,skipEmptyLines:true}}).data;
-  if(!rows.length){{showError("CSV is empty");return;}}
+fetch(API_URL)
+  .then(r => {{
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+  }})
+  .then(rows => {{
+      if(!rows.length){{ error("JSON empty – check tab name."); return; }}
 
-  const monthTotals={{}},genderMonth={{}},ageDist={{}},condCnt=Object.fromEntries(CONDITION_COLS.map(c=>[c,0]));
+      const monthTotals={{}}, genderMonth={{}}, ageDist={{}},
+            condCnt=Object.fromEntries(CONDITION_COLS.map(c=>[c,0]));
 
-  rows.forEach(row=>{{
-    const month=titleCase((row["Month"]||"").trim());
-    if(!month)return;
-    const gender=titleCase((row["Gender"]||"Unknown").trim())||"Unknown";
-    const age=(row["Age"]||"Unknown").trim()||"Unknown";
-    monthTotals[month]=(monthTotals[month]||0)+1;
-    genderMonth[month]=genderMonth[month]||{{}};
-    genderMonth[month][gender]=(genderMonth[month][gender]||0)+1;
-    ageDist[age]=(ageDist[age]||0)+1;
-    CONDITION_COLS.forEach(c=>{{if((row[c]||"").toLowerCase()==="yes")condCnt[c]++;}});
-  }});
+      rows.forEach(r=>{{
+          const month = titleCase((r.Month||"").trim()); if(!month) return;
+          const gender= titleCase((r.Gender||"Unknown").trim()) || "Unknown";
+          const age   = (r.Age||"Unknown").trim() || "Unknown";
 
-  const months=Object.keys(monthTotals).sort();
-  Plotly.newPlot("chart-month",[{{type:"bar",x:months,y:months.map(m=>monthTotals[m])}}],{{title:"Total Consultations per Month"}});
-  const genders=Array.from(new Set(Object.values(genderMonth).flatMap(o=>Object.keys(o))));
-  Plotly.newPlot("chart-gender",
-    genders.map(g=>({{name:g,type:"bar",x:months,y:months.map(m=>(genderMonth[m]&&genderMonth[m][g])||0)}})),
-    {{title:"Consultations by Gender per Month",barmode:"stack"}});
-  const ages=Object.keys(ageDist).sort();
-  Plotly.newPlot("chart-age",[{{type:"bar",x:ages,y:ages.map(a=>ageDist[a])}}],{{title:"Age Group Distribution (All Months)"}});
-  const top5=Object.entries(condCnt).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  Plotly.newPlot("chart-cond",[{{type:"bar",x:top5.map(t=>t[0]),y:top5.map(t=>t[1])}}],{{title:"Top 5 Reported Conditions"}});
-}})
-.catch(err=>{{showError("Error loading data: "+err);console.error(err);}});
+          monthTotals[month] = (monthTotals[month]||0)+1;
+
+          genderMonth[month] = genderMonth[month] || {{}};
+          genderMonth[month][gender] = (genderMonth[month][gender]||0)+1;
+
+          ageDist[age] = (ageDist[age]||0)+1;
+
+          CONDITION_COLS.forEach(c=>{{ if((r[c]||"").toLowerCase()==="yes") condCnt[c]++; }});
+      }});
+
+      const months = Object.keys(monthTotals).sort();
+      Plotly.newPlot("chart-month",[{{type:"bar",x:months,y:months.map(m=>monthTotals[m])}}],{{title:"Total Consultations per Month"}});
+      const genders=[...new Set(Object.values(genderMonth).flatMap(o=>Object.keys(o)))];
+      Plotly.newPlot("chart-gender",
+        genders.map(g=>({{name:g,type:"bar",x:months,y:months.map(m=>(genderMonth[m]&&genderMonth[m][g])||0)}})),
+        {{title:"Consultations by Gender per Month",barmode:"stack"}});
+      const ages = Object.keys(ageDist).sort();
+      Plotly.newPlot("chart-age",[{{type:"bar",x:ages,y:ages.map(a=>ageDist[a])}}],{{title:"Age Group Distribution (All Months)"}});
+      const top5 = Object.entries(condCnt).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      Plotly.newPlot("chart-cond",[{{type:"bar",x:top5.map(t=>t[0]),y:top5.map(t=>t[1])}}],{{title:"Top 5 Reported Conditions"}});
+  }})
+  .catch(e => {{ error("Data load failed: " + e); console.error(e); }});
 </script>
 </body>
 </html>
 """
 
-csv_url = "https://docs.google.com/spreadsheets/d/1tIr5xZK1VQwLz_m5ooNx261rjdZcJD-8MeENZ1IYxvU/gviz/tq?tqx=out:csv&gid=849395159"
-html_out = html_template.replace("CSV_LINK_PLACEHOLDER", csv_url)
-
-out_path = Path("/mnt/data/emergency_phc_dashboard_final.html")
-out_path.write_text(html_out, encoding="utf-8")
+out_path = Path("/mnt/data/emergency_phc_dashboard_json_data.html")
+out_path.write_text(html_json, encoding="utf-8")
 
 out_path
