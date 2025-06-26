@@ -1,82 +1,107 @@
-from pathlib import Path
-
-spreadsheet_id = "1tIr5xZK1VQwLz_m5ooNx261rjdZcJD-8MeENZ1IYxvU"
-tab_name = "Data"
-api_url = f"https://opensheet.elk.sh/{spreadsheet_id}/{tab_name}"
-
-html_json = f"""<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>EMERGENCY PHC Project - Ukraine - Monthly Report</title>
+<title>EMERGENCY PHC Project – Ukraine – Monthly Report</title>
+
+<!-- Plotly (interactive charts) -->
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
 <style>
- body{{font-family:Arial, sans-serif;margin:20px;max-width:1200px}}
- h1{{text-align:center}}
- .chart{{margin-bottom:60px}}
- .error{{color:red}}
+  body {font-family: Arial, sans-serif; margin: 20px; max-width: 1200px;}
+  h1   {text-align: center;}
+  .chart {margin-bottom: 60px;}
+  .error {color: red;}
 </style>
 </head>
 <body>
-<h1>EMERGENCY PHC Project - Ukraine - Monthly Report</h1>
+<h1>EMERGENCY PHC Project – Ukraine – Monthly Report</h1>
+
 <div id="chart-month"  class="chart"></div>
 <div id="chart-gender" class="chart"></div>
 <div id="chart-age"    class="chart"></div>
 <div id="chart-cond"   class="chart"></div>
 
 <script>
-const API_URL = "{api_url}";
+/* -----------------------------------------------------------
+   If you ever rename the tab, change “Data” below to match.
+   Sheet must be shared as:  Anyone with the link ▸ Viewer
+----------------------------------------------------------- */
+const API_URL = "https://opensheet.elk.sh/1tIr5xZK1VQwLz_m5ooNx261rjdZcJD-8MeENZ1IYxvU/Data";
+
 const CONDITION_COLS = ["Headache","High Blood Pressure","High blood sugare",
                         "Gastrointestinal symptoms","Respiratory symptoms",
                         "Depressed mood","Insomnia"];
 
-const titleCase = s => s.replace(/\\w\\S*/g, t => t.charAt(0).toUpperCase() + t.substr(1).toLowerCase());
-const error = m => document.body.insertAdjacentHTML("afterbegin", `<p class="error">${{m}}</p>`);
+// ---------- helpers ----------
+const titleCase = s => s.replace(/\w\S*/g,
+      t => t.charAt(0).toUpperCase() + t.substr(1).toLowerCase());
+const error = msg => document.body.insertAdjacentHTML(
+      "afterbegin", `<p class="error">${msg}</p>`);
 
+// ---------- main ----------
 fetch(API_URL)
-  .then(r => {{
-      if(!r.ok) throw new Error("HTTP " + r.status);
-      return r.json();
-  }})
-  .then(rows => {{
-      if(!rows.length){{ error("JSON empty – check tab name."); return; }}
+  .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+  .then(rows => {
+      if (!rows.length) { error("Sheet returned no rows."); return; }
 
-      const monthTotals={{}}, genderMonth={{}}, ageDist={{}},
-            condCnt=Object.fromEntries(CONDITION_COLS.map(c=>[c,0]));
+      const monthTotals = {}, genderMonth = {}, ageDist = {},
+            condCnt = Object.fromEntries(CONDITION_COLS.map(c => [c, 0]));
 
-      rows.forEach(r=>{{
-          const month = titleCase((r.Month||"").trim()); if(!month) return;
-          const gender= titleCase((r.Gender||"Unknown").trim()) || "Unknown";
-          const age   = (r.Age||"Unknown").trim() || "Unknown";
+      rows.forEach(r => {
+          const month  = titleCase((r.Month  || "").trim());   if (!month) return;
+          const gender = titleCase((r.Gender || "Unknown").trim()) || "Unknown";
+          const ageGrp =           (r.Age    || "Unknown").trim()  || "Unknown";
 
-          monthTotals[month] = (monthTotals[month]||0)+1;
+          monthTotals[month] = (monthTotals[month] || 0) + 1;
 
-          genderMonth[month] = genderMonth[month] || {{}};
-          genderMonth[month][gender] = (genderMonth[month][gender]||0)+1;
+          genderMonth[month] = genderMonth[month] || {};
+          genderMonth[month][gender] = (genderMonth[month][gender] || 0) + 1;
 
-          ageDist[age] = (ageDist[age]||0)+1;
+          ageDist[ageGrp] = (ageDist[ageGrp] || 0) + 1;
 
-          CONDITION_COLS.forEach(c=>{{ if((r[c]||"").toLowerCase()==="yes") condCnt[c]++; }});
-      }});
+          CONDITION_COLS.forEach(c => {
+              if ((r[c] || "").toLowerCase() === "yes") condCnt[c]++;
+          });
+      });
 
+      // 1 – total per month
       const months = Object.keys(monthTotals).sort();
-      Plotly.newPlot("chart-month",[{{type:"bar",x:months,y:months.map(m=>monthTotals[m])}}],{{title:"Total Consultations per Month"}});
-      const genders=[...new Set(Object.values(genderMonth).flatMap(o=>Object.keys(o)))];
+      Plotly.newPlot("chart-month", [{
+          type: "bar",
+          x: months,
+          y: months.map(m => monthTotals[m])
+      }], {title: "Total Consultations per Month"});
+
+      // 2 – gender stacked
+      const genders = [...new Set(Object.values(genderMonth).flatMap(o => Object.keys(o)))];
       Plotly.newPlot("chart-gender",
-        genders.map(g=>({{name:g,type:"bar",x:months,y:months.map(m=>(genderMonth[m]&&genderMonth[m][g])||0)}})),
-        {{title:"Consultations by Gender per Month",barmode:"stack"}});
+          genders.map(g => ({
+              name: g,
+              type: "bar",
+              x: months,
+              y: months.map(m => (genderMonth[m] && genderMonth[m][g]) || 0)
+          })),
+          {title: "Consultations by Gender per Month", barmode: "stack"});
+
+      // 3 – age distribution
       const ages = Object.keys(ageDist).sort();
-      Plotly.newPlot("chart-age",[{{type:"bar",x:ages,y:ages.map(a=>ageDist[a])}}],{{title:"Age Group Distribution (All Months)"}});
+      Plotly.newPlot("chart-age", [{
+          type: "bar",
+          x: ages,
+          y: ages.map(a => ageDist[a])
+      }], {title: "Age Group Distribution (All Months)"});
+
+      // 4 – top 5 conditions
       const top5 = Object.entries(condCnt).sort((a,b)=>b[1]-a[1]).slice(0,5);
-      Plotly.newPlot("chart-cond",[{{type:"bar",x:top5.map(t=>t[0]),y:top5.map(t=>t[1])}}],{{title:"Top 5 Reported Conditions"}});
-  }})
-  .catch(e => {{ error("Data load failed: " + e); console.error(e); }});
+      Plotly.newPlot("chart-cond", [{
+          type: "bar",
+          x: top5.map(t => t[0]),
+          y: top5.map(t => t[1])
+      }], {title: "Top 5 Reported Conditions"});
+  })
+  .catch(e => { error("Data load failed: " + e.message); console.error(e); });
 </script>
 </body>
 </html>
-"""
 
-out_path = Path("/mnt/data/emergency_phc_dashboard_json_data.html")
-out_path.write_text(html_json, encoding="utf-8")
-
-out_path
